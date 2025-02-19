@@ -246,6 +246,53 @@ impl PublicKey {
         }
     }
 
+    /// Copied from verift() above
+    /// Propagates necessary utilities:
+    /// - logFun, msgFun for debugging
+    /// - i, projective_point for loading progrss
+    /// - update_kobold_account to save progress
+    #[allow(non_snake_case)]
+    pub fn kobold_verify<T: SigningTranscript, F: Fn(usize, [u64; 15]) -> ()>(
+        &self,
+        mut t: T,
+        signature: &Signature,
+        logFun: &dyn Fn() -> (),
+        msgFun: &dyn Fn(&str) -> (),
+        update_kobold_account_handle: F,
+        i: usize,
+        projective_point: [u64; 15],
+    ) -> u8 {
+        let A: &RistrettoPoint = self.as_point();
+
+        t.proto_name(b"Schnorr-sig");
+        t.commit_point(b"sign:pk", self.as_compressed());
+        t.commit_point(b"sign:R", &signature.R);
+
+        let k: Scalar = t.challenge_scalar(b"sign:c"); // context, message, A/public_key, R=rG
+        let (R, res) = RistrettoPoint::vartime_double_scalar_mul_basepoint_with_logs(
+            &k,
+            &(-A),
+            &signature.s,
+            msgFun,
+            logFun,
+            update_kobold_account_handle,
+            i,
+            projective_point,
+        );
+        if res == 1 {
+            // to be continued
+            return 1u8;
+        } else {
+            // res = 2 done
+            let R_compressed = R.compress();
+            if R_compressed == signature.R {
+                return 4u8; // Signature Ok
+            } else {
+                return 3u8; // Signature Not Ok
+            }
+        }
+    }
+
     /// Verify a signature by this public key on a message.
     pub fn verify_simple(
         &self,
