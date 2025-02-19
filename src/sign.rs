@@ -269,7 +269,7 @@ impl PublicKey {
         t.commit_point(b"sign:R", &signature.R);
 
         let k: Scalar = t.challenge_scalar(b"sign:c"); // context, message, A/public_key, R=rG
-        let (R, res) = RistrettoPoint::vartime_double_scalar_mul_basepoint_with_logs(
+        let (R, res) = RistrettoPoint::kobold_vartime_double_scalar_mul_basepoint(
             &k,
             &(-A),
             &signature.s,
