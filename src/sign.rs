@@ -282,10 +282,10 @@ impl PublicKey {
             // res = 2 done
             let R_compressed = R.compress();
             if R_compressed == signature.R {
-                update_kobold_account_handle(444, [0u64; 15]);
+                update_kobold_account_handle(1000, [0u64; 15]);
                 return 4u8; // Signature Ok
             } else {
-                update_kobold_account_handle(333, [0u64; 15]);
+                update_kobold_account_handle(1001, [0u64; 15]);
                 return 3u8; // Signature Not Ok
             }
         }
