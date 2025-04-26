@@ -246,17 +246,16 @@ impl PublicKey {
         }
     }
 
-    /// Copied from verift() above
+    /// Copied from verify() above
     /// Propagates necessary utilities:
-    /// - logFun, msgFun for debugging
     /// - i, projective_point for loading progrss
-    /// - update_kobold_account to save progress
+    /// - progress saving handle
     #[allow(non_snake_case)]
-    pub fn kobold_verify<T: SigningTranscript, F: Fn(usize, [u64; 15]) -> ()>(
+    pub fn step_verify<T: SigningTranscript, F: Fn(usize, [u64; 15]) -> ()>(
         &self,
         mut t: T,
         signature: &Signature,
-        update_kobold_account_handle: F,
+        progress_saving_handle: F,
         i: usize,
         projective_point: [u64; 15],
     ) -> u8 {
@@ -267,28 +266,28 @@ impl PublicKey {
         t.commit_point(b"sign:R", &signature.R);
 
         let k: Scalar = t.challenge_scalar(b"sign:c"); // context, message, A/public_key, R=rG
-        let (R, res) = RistrettoPoint::kobold_vartime_double_scalar_mul_basepoint(
+        let (R, res) = RistrettoPoint::step_vartime_double_scalar_mul_basepoint(
             &k,
             &(-A),
             &signature.s,
-            &update_kobold_account_handle,
+            &progress_saving_handle,
             i,
             projective_point,
         );
-        if res == 1 {
-            // to be continued
-            return 1u8;
-        } else {
-            // res = 2 done
-            let R_compressed = R.compress();
-            if R_compressed == signature.R {
-                update_kobold_account_handle(1000, [0u64; 15]);
-                return 4u8; // Signature Ok
-            } else {
-                update_kobold_account_handle(1001, [0u64; 15]);
-                return 3u8; // Signature Not Ok
-            }
+        if res == 1u8 {
+            // signature check: to be continued
+            return res;
         }
+
+        // signature check: completed
+        let R_compressed = R.compress();
+        if R_compressed == signature.R {
+            progress_saving_handle(1000, [0u64; 15]);
+            return 4u8; // Signature OK
+        }
+
+        progress_saving_handle(1001, [0u64; 15]);
+        return 3u8; // Signature KO
     }
 
     /// Verify a signature by this public key on a message.
